@@ -10,11 +10,14 @@ MCU = atmega1284p
 F_CPU = 16000000UL
 
 # Source files
-SRC = 	src/main.c
+SRC = src/*.c
+
+# Included directories
+INCLUDE_DIR = include
 
 # Compiler and linker flags
 # Considerar: -Werror -Wfatal-errors -Wall -Wextra
-CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os
+CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -I${INCLUDE_DIR}
 LDFLAGS = -mmcu=$(MCU)
 
 # Output directory
