@@ -17,15 +17,13 @@
 
 #include "UART.h"
 
-void PWM_update(void);        // actualiza la salida PWM en base al duty_cycle
-void PWM_init(void);          // inicializa el timer del pwm en fast mode
-void interrupt_init();        // habilita la interrupcion que es disparada por la lectura
-void adc_init();              // inicializa el adc para la medición
-void controller_update(void); // actualiza la salida PWM en base a una logica de control
+void PWM_update(uint8_t duty_cycle); // actualiza la salida PWM en base al duty_cycle
+void PWM_init(void);                 // inicializa el timer del pwm en fast mode
+void interrupt_init(void);           // habilita la interrupcion que es disparada por la lectura
+void adc_init(void);                 // inicializa el adc para la medición
+void controller(void);               // este es el controlador que implementa la accion de control
 
-uint8_t temperature = 0;
-uint8_t duty_cycle = 0;
-char message[] = "Temp: 26°C \n";
+uint8_t ADC_READ_VAL = 0;
 
 int main(void)
 {
@@ -72,17 +70,14 @@ ISR(TIMER1_COMPA_vect)
   while ((ADCSRA & (1 << ADSC)) != 0)
   {
   } // se espera a la conversion
-  temperature = ADC - 273;
-  // sprintf(message, "Temp: %d°C \n", temperature);
+  ADC_READ_VAL = ADC - 273;
 
-  // USART_putstring(message);
-  //
   //  generar PWM acorde a una logica de control
   //  proporcional a la lectura de la temperatura
-  controller_update();
+  controller();
 }
 
-void PWM_update(void)
+void PWM_update(uint8_t duty_cycle)
 {
   OCR1A = (uint16_t)((duty_cycle * ICR1) / 100);
 }
@@ -97,18 +92,19 @@ void PWM_init(void)
   DDRB |= (1 << PB1);
 }
 
-void controller_update(void)
+uint8_t control_action = 0;
+void controller(void)
 {
-  duty_cycle = SCALE_FACTOR * temperature;
+  control_action = SCALE_FACTOR * ADC_READ_VAL;
 
-  if (duty_cycle > 100)
+  if (control_action > 100)
   {
-    duty_cycle = 100;
+    control_action = 100;
   }
-  else if (duty_cycle < 0)
+  else if (control_action < 0)
   {
-    duty_cycle = 0;
+    control_action = 0;
   }
 
-  PWM_update();
+  PWM_update(control_action);
 }
