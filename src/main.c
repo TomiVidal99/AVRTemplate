@@ -21,7 +21,7 @@
 #include <avr/sleep.h>
 #include <util/delay.h>
 
-#include "definitions.h"
+#include "../include/definitions.h"
 
 uint16_t system_output_mv;
 
@@ -91,7 +91,6 @@ ISR(TIMER1_OVF_vect)
   {
     set_pwm_duty_cycle(5);
   }
-
 }
 
 void init_adc5()
