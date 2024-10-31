@@ -1,22 +1,11 @@
 /*
  * main.c
- *
- * Created: 14/7/2024 22:03:25
- * Author : Tomas Vidal
- * Control básico de planta
+ * TPA1
  *
  * Que hace?
- * Con el Timer 1 (16 bits) se genera una interrupcion cada 1ms y un PWM de esa frecuencia
- * el callback de la interrupcion ajusta el ciclo de trabajo del PWM (accion de control)
- * a partir de leer el ADC5 y con calcular ajusta el PWM.
- *
- *
- * ENTRADA (LECTURA DE ADC): ADC5
- * SALIDA (FAST PWM DE TIMER1): PB1
- *
- * OTRAS SALIDAS/ENTRADAS (para debugear):
- * RX, TX, PB4, PB6
- *
+ * Mete un escalón después de 1segundo
+ * y se muestrea la salida y se guardan las muestras en la DRAM
+ * 
  */
 
 #ifndef F_CPU
@@ -34,9 +23,15 @@
 #include "definitions.h"
 #include "uart.h"
 
+#define MAX_SAMPLES 200
+
 volatile uint16_t timer0_counter;
 uint16_t system_output_mv = 0;
 char *debug_output = "TEST\n";
+
+uint8_t trigger_step_counter_ms = 0;
+uint16_t sample_counter = 0;
+uint16_t MUESTRAS[MAX_SAMPLES] = {};
 
 int main(void)
 {
@@ -51,11 +46,17 @@ int main(void)
 
   // set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Modo de bajo consumo: power-down
 
-  set_pwm_duty_cycle(90);
+  set_pwm_duty_cycle(20);
 
   while (1)
   {
     // sleep_mode();
+
+    // if (sample_counter >= MAX_SAMPLES && sample_counter < MAX_SAMPLES+200) {
+    //   sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
+    //   USART_putstring(debug_output);
+    //   sample_counter = MAX_SAMPLES+200;
+    // }
   }
   return 0;
 }
@@ -72,8 +73,8 @@ void init_timer1()
 {
   DDRB |= (1 << PB1);
   TCCR1A = (1 << COM1A1) | (1 << WGM11);
-  TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS10);
-  ICR1 = 15999;
+  TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << WGM11) | (1 << CS10); // 64
+  ICR1 = 2499; // 10ms
 
   TIMSK1 = (1 << TOIE1);
 }
@@ -92,20 +93,25 @@ ISR(TIMER1_OVF_vect)
 {
   // esta es una señal de referencia para saber cuando
   // se hace la interrupcion cada 1ms
-  PORTB ^= (1 << PB6);
+  //PORTB ^= (1 << PB6);
 
   read_adc5();
 
+  if (sample_counter >= MAX_SAMPLES) return;
+  sample_counter++;
+
+  MUESTRAS[sample_counter] = system_output_mv;
+
   // esta es la accion de control (ahora hice una logica muy simple)
   // acá iría el diseño del controlador
-  if (system_output_mv < 500)
-  {
-    set_pwm_duty_cycle(90);
-  }
-  else if (system_output_mv > 3500)
-  {
-    set_pwm_duty_cycle(1);
-  }
+  // if (system_output_mv < 500)
+  // {
+  //   set_pwm_duty_cycle(90);
+  // }
+  // else if (system_output_mv > 3500)
+  // {
+  //   set_pwm_duty_cycle(1);
+  // }
 }
 
 void init_adc5()
@@ -137,7 +143,18 @@ ISR(TIMER0_COMPA_vect)
     return;
   }
   timer0_counter = 0;
-  sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
-  USART_putstring(debug_output);
+  // sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
+  // USART_putstring(debug_output);
+
+
+  trigger_step_counter_ms++;
+
+  if (trigger_step_counter_ms == 3) {
+    set_pwm_duty_cycle(80);
+  } else if (trigger_step_counter_ms == 6) {
+    set_pwm_duty_cycle(20);
+  }
+
+
   PORTB ^= (1 << PB4);
 }
