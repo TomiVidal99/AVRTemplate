@@ -5,7 +5,7 @@
  * Que hace?
  * Mete un escalón después de 1segundo
  * y se muestrea la salida y se guardan las muestras en la DRAM
- * 
+ *
  */
 
 #ifndef F_CPU
@@ -25,17 +25,20 @@
 
 #define MAX_SAMPLES 200
 
+// este es el buffer de 8 bits que contiene mi
+// señal pseudo aleatoria
+volatile uint8_t prbs_buffer = 0xF;
+
 volatile uint16_t timer0_counter;
 uint16_t system_output_mv = 0;
 char *debug_output = "TEST\n";
 
-uint8_t trigger_step_counter_ms = 0;
 uint16_t sample_counter = 0;
 uint16_t MUESTRAS[MAX_SAMPLES] = {};
 
 int main(void)
 {
-  init_adc5();
+  // init_adc5();
   init_timer1();
   init_timer0();
   USART_init();
@@ -44,9 +47,12 @@ int main(void)
   DDRB |= (1 << PB4);
   DDRB |= (1 << PB6);
 
+  sprintf(debug_output, "prbs_buffer: '%d'\r\n", prbs_buffer);
+  USART_putstring(debug_output);
+
   // set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Modo de bajo consumo: power-down
 
-  set_pwm_duty_cycle(20);
+  set_pwm_duty_cycle(0);
 
   while (1)
   {
@@ -74,7 +80,7 @@ void init_timer1()
   DDRB |= (1 << PB1);
   TCCR1A = (1 << COM1A1) | (1 << WGM11);
   TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << WGM11) | (1 << CS10); // 64
-  ICR1 = 2499; // 10ms
+  ICR1 = 2499;                                                       // 10ms
 
   TIMSK1 = (1 << TOIE1);
 }
@@ -93,14 +99,15 @@ ISR(TIMER1_OVF_vect)
 {
   // esta es una señal de referencia para saber cuando
   // se hace la interrupcion cada 1ms
-  //PORTB ^= (1 << PB6);
+  // PORTB ^= (1 << PB6);
 
-  read_adc5();
+  // read_adc5();
 
-  if (sample_counter >= MAX_SAMPLES) return;
-  sample_counter++;
+  // if (sample_counter >= MAX_SAMPLES)
+  //   return;
+  // sample_counter++;
 
-  MUESTRAS[sample_counter] = system_output_mv;
+  // MUESTRAS[sample_counter] = system_output_mv;
 
   // esta es la accion de control (ahora hice una logica muy simple)
   // acá iría el diseño del controlador
@@ -135,10 +142,11 @@ void read_adc5()
   system_output_mv = (uint16_t)((4.88 * ADC) + 1);
 }
 
+uint8_t val;
 ISR(TIMER0_COMPA_vect)
 {
   timer0_counter++;
-  if (timer0_counter < 1000)
+  if (timer0_counter < 300)
   {
     return;
   }
@@ -146,15 +154,25 @@ ISR(TIMER0_COMPA_vect)
   // sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
   // USART_putstring(debug_output);
 
-
-  trigger_step_counter_ms++;
-
-  if (trigger_step_counter_ms == 3) {
-    set_pwm_duty_cycle(80);
-  } else if (trigger_step_counter_ms == 6) {
-    set_pwm_duty_cycle(20);
+  // Se aplica la señal pseudo aleatoria
+  val = update_prbs();
+  if (val)
+  {
+    set_pwm_duty_cycle(100);
+  }
+  else
+  {
+    set_pwm_duty_cycle(0);
   }
 
+  sprintf(debug_output, "val: '%d'\r\n", val);
+  USART_putstring(debug_output);
 
   PORTB ^= (1 << PB4);
+}
+
+uint8_t update_prbs()
+{
+  prbs_buffer = ((prbs_buffer & 0x1) ^ (prbs_buffer & 0x2) ^ (prbs_buffer & 0x3) ^ (prbs_buffer & 0x7));
+  return (prbs_buffer & 0x7);
 }
