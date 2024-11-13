@@ -27,7 +27,7 @@
 
 // este es el buffer de 8 bits que contiene mi
 // señal pseudo aleatoria
-volatile uint8_t prbs_buffer = 0xF;
+volatile uint8_t prbs_buffer = 127;
 
 volatile uint16_t timer0_counter;
 uint16_t system_output_mv = 0;
@@ -44,6 +44,10 @@ int main(void)
   USART_init();
   sei();
 
+  // habilito la salida del "falso PWM"
+  // DDRB |= (1 << PB1);
+  DDRD |= (1 << PD7);
+
   DDRB |= (1 << PB4);
   DDRB |= (1 << PB6);
 
@@ -52,7 +56,7 @@ int main(void)
 
   // set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Modo de bajo consumo: power-down
 
-  set_pwm_duty_cycle(0);
+  //set_pwm_duty_cycle(0);
 
   while (1)
   {
@@ -85,15 +89,15 @@ void init_timer1()
   TIMSK1 = (1 << TOIE1);
 }
 
-void set_pwm_duty_cycle(uint8_t duty_cycle)
-{
-  if (duty_cycle > 100)
-  {
-    duty_cycle = 100;
-  }
+// void set_pwm_duty_cycle(uint8_t duty_cycle)
+// {
+//   if (duty_cycle > 100)
+//   {
+//     duty_cycle = 100;
+//   }
 
-  OCR1A = (uint16_t)(((uint32_t)duty_cycle * (ICR1 + 1)) / 100);
-}
+//   OCR1A = (uint16_t)(((uint32_t)duty_cycle * (ICR1 + 1)) / 100);
+// }
 
 ISR(TIMER1_OVF_vect)
 {
@@ -142,7 +146,7 @@ void read_adc5()
   system_output_mv = (uint16_t)((4.88 * ADC) + 1);
 }
 
-uint8_t val;
+volatile uint8_t val;
 ISR(TIMER0_COMPA_vect)
 {
   timer0_counter++;
@@ -158,11 +162,11 @@ ISR(TIMER0_COMPA_vect)
   val = update_prbs();
   if (val)
   {
-    set_pwm_duty_cycle(100);
+    PORTD |= (1 << PD7);
   }
   else
   {
-    set_pwm_duty_cycle(0);
+    PORTD &= ~(1 << PD7);
   }
 
   sprintf(debug_output, "val: '%d'\r\n", val);
@@ -173,6 +177,6 @@ ISR(TIMER0_COMPA_vect)
 
 uint8_t update_prbs()
 {
-  prbs_buffer = ((prbs_buffer & 0x1) ^ (prbs_buffer & 0x2) ^ (prbs_buffer & 0x3) ^ (prbs_buffer & 0x7));
-  return (prbs_buffer & 0x7);
+  prbs_buffer = (prbs_buffer << 1) + (((prbs_buffer >> 1) ^ (prbs_buffer >> 2) ^ (prbs_buffer >> 3) ^ (prbs_buffer >> 7)) & (0x1));
+  return (prbs_buffer >> 7);
 }
