@@ -150,7 +150,7 @@ volatile uint8_t val;
 ISR(TIMER0_COMPA_vect)
 {
   timer0_counter++;
-  if (timer0_counter < 300)
+  if (timer0_counter < 200)
   {
     return;
   }
@@ -177,6 +177,6 @@ ISR(TIMER0_COMPA_vect)
 
 uint8_t update_prbs()
 {
-  prbs_buffer = (prbs_buffer << 1) + (((prbs_buffer >> 1) ^ (prbs_buffer >> 2) ^ (prbs_buffer >> 3) ^ (prbs_buffer >> 7)) & (0x1));
-  return (prbs_buffer >> 7);
+  prbs_buffer = (prbs_buffer << 1) + (((prbs_buffer >> 3) ^ (prbs_buffer >> 6)) & (0x1));
+  return (prbs_buffer >> 6);
 }
