@@ -178,5 +178,5 @@ ISR(TIMER0_COMPA_vect)
 uint8_t update_prbs()
 {
   prbs_buffer = (prbs_buffer << 1) + (((prbs_buffer >> 3) ^ (prbs_buffer >> 6)) & (0x1));
-  return (prbs_buffer >> 6);
+  return (prbs_buffer >> 7);
 }
