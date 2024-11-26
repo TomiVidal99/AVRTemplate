@@ -2,9 +2,8 @@
  * main.c
  * TPA1
  *
- * Que hace?
- * Mete un escalón después de 1segundo
- * y se muestrea la salida y se guardan las muestras en la DRAM
+ * La salida de la señal está en el PB1,
+ * Osea el pin 9 en el Arduino UNO
  *
  */
 
@@ -35,94 +34,32 @@ char *debug_output = "TEST\n";
 
 uint16_t sample_counter = 0;
 uint16_t MUESTRAS[MAX_SAMPLES] = {};
+volatile uint8_t val;
 
 int main(void)
 {
-  // init_adc5();
-  init_timer1();
   init_timer0();
-  USART_init();
+  // USART_init();
   sei();
 
-  // habilito la salida del "falso PWM"
-  // DDRB |= (1 << PB1);
-  DDRD |= (1 << PD7);
+  DDRB |= (1 << PB1); // salida
 
-  DDRB |= (1 << PB4);
-  DDRB |= (1 << PB6);
-
-  sprintf(debug_output, "prbs_buffer: '%d'\r\n", prbs_buffer);
-  USART_putstring(debug_output);
-
-  // set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Modo de bajo consumo: power-down
-
-  //set_pwm_duty_cycle(0);
+  // sprintf(debug_output, "prbs_buffer: '%d'\r\n", prbs_buffer);
+  // USART_putstring(debug_output);
 
   while (1)
   {
-    // sleep_mode();
-
-    // if (sample_counter >= MAX_SAMPLES && sample_counter < MAX_SAMPLES+200) {
-    //   sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
-    //   USART_putstring(debug_output);
-    //   sample_counter = MAX_SAMPLES+200;
-    // }
   }
   return 0;
 }
 
+// dispara cada 1ms
 void init_timer0()
 {
-  TCCR0A = (1 << WGM01); // CTC mode
+  TCCR0A = (1 << WGM01);
   TCCR0B = (1 << CS01) | (1 << CS00);
   OCR0A = 249;
   TIMSK0 = (1 << OCIE0A);
-}
-
-void init_timer1()
-{
-  DDRB |= (1 << PB1);
-  TCCR1A = (1 << COM1A1) | (1 << WGM11);
-  TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << WGM11) | (1 << CS10); // 64
-  ICR1 = 2499;                                                       // 10ms
-
-  TIMSK1 = (1 << TOIE1);
-}
-
-// void set_pwm_duty_cycle(uint8_t duty_cycle)
-// {
-//   if (duty_cycle > 100)
-//   {
-//     duty_cycle = 100;
-//   }
-
-//   OCR1A = (uint16_t)(((uint32_t)duty_cycle * (ICR1 + 1)) / 100);
-// }
-
-ISR(TIMER1_OVF_vect)
-{
-  // esta es una señal de referencia para saber cuando
-  // se hace la interrupcion cada 1ms
-  // PORTB ^= (1 << PB6);
-
-  // read_adc5();
-
-  // if (sample_counter >= MAX_SAMPLES)
-  //   return;
-  // sample_counter++;
-
-  // MUESTRAS[sample_counter] = system_output_mv;
-
-  // esta es la accion de control (ahora hice una logica muy simple)
-  // acá iría el diseño del controlador
-  // if (system_output_mv < 500)
-  // {
-  //   set_pwm_duty_cycle(90);
-  // }
-  // else if (system_output_mv > 3500)
-  // {
-  //   set_pwm_duty_cycle(1);
-  // }
 }
 
 void init_adc5()
@@ -146,7 +83,7 @@ void read_adc5()
   system_output_mv = (uint16_t)((4.88 * ADC) + 1);
 }
 
-volatile uint8_t val;
+// se dispara cada 1ms
 ISR(TIMER0_COMPA_vect)
 {
   timer0_counter++;
@@ -155,24 +92,19 @@ ISR(TIMER0_COMPA_vect)
     return;
   }
   timer0_counter = 0;
-  // sprintf(debug_output, "lectura: %d\n\r", system_output_mv);
-  // USART_putstring(debug_output);
 
   // Se aplica la señal pseudo aleatoria
   val = update_prbs();
   if (val)
   {
-    PORTD |= (1 << PD7);
+    PORTB |= (1 << PB1);
   }
   else
   {
-    PORTD &= ~(1 << PD7);
+    PORTB &= ~(1 << PB1);
   }
 
-  sprintf(debug_output, "val: '%d'\r\n", val);
-  USART_putstring(debug_output);
-
-  PORTB ^= (1 << PB4);
+  // PORTB ^= (1 << PB4);
 }
 
 uint8_t update_prbs()
